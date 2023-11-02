@@ -1,4 +1,4 @@
-#include <iostream>
+﻿#include <iostream>
 #include <complex>
 #include <random>
 #include <ctime>
@@ -13,6 +13,8 @@ class Matrix {
 public:
 	Matrix(int rows, int cols);
 	Matrix(int rows, int cols, const T& lower, const T& upper);
+	Matrix(const Matrix<T>& other);
+	Matrix(const Matrix<complex<T>>& other);
 	~Matrix();
 
 	void set_rows(int rows);
@@ -20,11 +22,15 @@ public:
 	int get_rows() const;
 	int get_cols() const;
 
-	T& operator()(int row, int col);
+	T& operator()(int row, int col) const;
 	Matrix<T> operator+(const Matrix<T>& other) const;
 	Matrix<complex<T>> operator+(const Matrix<complex<T>>& other) const;
+	Matrix<T> operator+=(const Matrix<T>& other);
+	Matrix<complex<T>> operator+=(const Matrix<complex<T>>& other);
 	Matrix<T> operator-(const Matrix<T>& other) const;
 	Matrix<complex<T>> operator-(const Matrix<complex<T>>& other) const;
+	Matrix<T> operator-=(const Matrix<T>& other);
+	Matrix<complex<T>> operator-=(const Matrix<complex<T>>& other);
 	Matrix<T> operator*(const Matrix<T>& other) const;
 	Matrix<complex<T>> operator*(const Matrix<complex<T>>& other) const;
 	Matrix<T> operator*(const T& scalar) const;
@@ -73,7 +79,27 @@ Matrix<T>::Matrix(int rows, int cols, const T& lower, const T& upper) {
 
 	for (int i = 0; i < _rows; ++i) {
 		for (int j = 0; j < _cols; ++j) {
-			_data[i][j] = lower + static_cast<T>(std::rand()) / (static_cast<T>(RAND_MAX) / (upper - lower));
+			_data[i][j] = lower + static_cast<T>(rand()) / (static_cast<T>(RAND_MAX) / (upper - lower));
+		}
+	}
+}
+template<typename T>
+Matrix<T>::Matrix(const Matrix<T>& other) : _rows(other._rows), _cols(other._cols) {
+	_data = new T * [_rows];
+	for (int i = 0; i < _rows; ++i) {
+		_data[i] = new T[_cols];
+		for (int j = 0; j < _cols; ++j) {
+			_data[i][j] = other(i, j);
+		}
+	}
+}
+template<typename T>
+Matrix<T>::Matrix(const Matrix<complex<T>>& other) : _rows(other._rows), _cols(other._cols) {
+	_data = new T * [_rows];
+	for (int i = 0; i < _rows; ++i) {
+		_data[i] = new T[_cols];
+		for (int j = 0; j < _cols; ++j) {
+			_data[i][j] = other(i, j);
 		}
 	}
 }
@@ -103,66 +129,83 @@ int Matrix<T>::get_cols() const {
 }
 
 template<typename T>
-T& Matrix<T>::operator()(int row, int col) {
+T& Matrix<T>::operator()(int row, int col) const{
 	return _data[row][col];
 }
 template<typename T>
 Matrix<T> Matrix<T>::operator+(const Matrix<T>& other) const {
-	if (_rows != other._rows || _cols != other._cols) {
-		throw invalid_argument("Matrix dimensions must be the same for addition.");
-	}
-	Matrix<T> result(_rows, _cols);
-	for (int i = 0; i < _rows; ++i) {
-		for (int j = 0; j < _cols; ++j) {
-			result(i, j) = _data[i][j] + other(i, j);
-		}
-	}
-	return result;
+	return Matrix(*this) += other;
 }
 template<typename T>
 Matrix<complex<T>> Matrix<T>::operator+(const Matrix<complex<T>>& other) const {
+	return Matrix(*this) += other;
+}
+template<typename T>
+Matrix<T> Matrix<T>::operator+=(const Matrix<T>& other) {
 	if (_rows != other._rows || _cols != other._cols) {
-		throw invalid_argument("Matrix dimensions must be the same for addition.");
+		throw std::invalid_argument("Matrix dimensions must be the same for addition.");
 	}
-	Matrix<complex<T>> result(_rows, _cols);
+
 	for (int i = 0; i < _rows; ++i) {
 		for (int j = 0; j < _cols; ++j) {
-			result(i, j) = _data[i][j] + other(i, j);
+			_data[i][j] += other(i, j);
 		}
 	}
-	return result;
+	return *this;
+}
+template<typename T>
+Matrix<complex<T>> Matrix<T>::operator+=(const Matrix<complex<T>>& other) {
+	if (_rows != other._rows || _cols != other._cols) {
+		throw std::invalid_argument("Matrix dimensions must be the same for addition.");
+	}
+
+	for (int i = 0; i < _rows; ++i) {
+		for (int j = 0; j < _cols; ++j) {
+			_data[i][j].real() += other(i, j);
+			_data[i][j].imag() += other(i, j);
+		}
+	}
+	return *this;
 }
 template<typename T>
 Matrix<T> Matrix<T>::operator-(const Matrix<T>& other) const {
-	if (_rows != other._rows || _cols != other._cols) {
-		throw invalid_argument("Matrix dimensions must be the same for subtraction.");
-	}
-	Matrix<T> result(_rows, _cols);
-	for (int i = 0; i < _rows; ++i) {
-		for (int j = 0; j < _cols; ++j) {
-			result(i, j) = _data[i][j] - other(i, j);
-		}
-	}
-	return result;
+	return Matrix(*this) -= other;
 }
 template<typename T>
 Matrix<complex<T>> Matrix<T>::operator-(const Matrix<complex<T>>& other) const {
+	return Matrix(*this) -= other;
+}
+template<typename T>
+Matrix<T> Matrix<T>::operator-=(const Matrix<T>& other) {
 	if (_rows != other._rows || _cols != other._cols) {
-		throw invalid_argument("Matrix dimensions must be the same for subtraction.");
+		throw std::invalid_argument("Matrix dimensions must be the same for subtraction.");
 	}
-	Matrix<complex<T>> result(_rows, _cols);
+
 	for (int i = 0; i < _rows; ++i) {
 		for (int j = 0; j < _cols; ++j) {
-			result(i, j) = _data[i][j] - other(i, j);
+			_data[i][j] -= other(i, j);
 		}
 	}
-	return result;
+	return *this;
+}
+template<typename T>
+Matrix<complex<T>> Matrix<T>::operator-=(const Matrix<complex<T>>& other) {
+	if (_rows != other._rows || _cols != other._cols) {
+		throw std::invalid_argument("Matrix dimensions must be the same for subtraction.");
+	}
+
+	for (int i = 0; i < _rows; ++i) {
+		for (int j = 0; j < _cols; ++j) {
+			_data[i][j] -= other(i, j);
+		}
+	}
+	return *this;
 }
 template<typename T>
 Matrix<T> Matrix<T>::operator*(const Matrix<T>& other) const {
 	int result_rows = _rows;
 	int result_cols = other._cols;
-	Matrix<T> result(result_rows, result_cols, T(0));
+	Matrix<T> result(result_rows, result_cols);
 
 	for (int i = 0; i < result_rows; ++i) {
 		for (int j = 0; j < result_cols; ++j) {
@@ -291,12 +334,26 @@ bool Matrix<T>::operator!=(const Matrix<complex<T>>& other) const {
 int main() {
 	Matrix<int> matrix1(5, 5, 1, 8);
 	Matrix<int> matrix2(5, 5, 1, 8);
-	cout << matrix1 << "\n";
-	cout << matrix2 << "\n";
+	Matrix<float> matrix3(5, 5, 1.0, 5.0);
+	Matrix<int> matrix(4, 3);
+	Matrix<int> sum = matrix1 + matrix2;
+	Matrix<int> multiplication = matrix1 * matrix2;
+	Matrix<int> multiplication2 = matrix1 * 5;
+	Matrix<int> division = matrix1/3;
+	cout << "Zero matrix: \n" << matrix << "\n";
+	cout << "Matrix 1: \n" << matrix1 << "\n";
+	cout << "Matrix 2: \n" << matrix2 << "\n";
+	cout << "Matrix of float: \n" << matrix3 << "\n";
+	cout << "Sum of matrix: \n" << sum << "\n";
+	cout << "Multiplication: \n" << multiplication << "\n";
+	cout << "Multiplication by scalar: \n" << multiplication2 << "\n";
+	cout << "Division: \n" << division << "\n";
 	int trace = matrix1.trace();
-	cout << trace << "\n";
+	float trace2 = matrix3.trace();
+	cout << "int trace: " << trace << "\n";
+	cout << "float trace: " << trace2 << "\n";
 	bool iseq = matrix1 == matrix2;
 	bool isnteq = matrix1 != matrix2;
-	cout << iseq << "\n";
-	cout << isnteq << "\n";
+	cout << "is equal: " << iseq << "\n";
+	cout << "isn't equal: " << isnteq << "\n";
 }
