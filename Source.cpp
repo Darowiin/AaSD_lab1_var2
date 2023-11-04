@@ -13,6 +13,8 @@ class Matrix {
 public:
 	Matrix(int rows, int cols);
 	Matrix(int rows, int cols, const T& lower, const T& upper);
+	Matrix(int rows, int cols, complex<T>);
+	Matrix(int rows, int cols, const complex<T>& lower, const complex<T>& upper);
 	Matrix(const Matrix<T>& other);
 	Matrix(const Matrix<complex<T>>& other);
 	~Matrix();
@@ -44,7 +46,6 @@ public:
 	bool operator!=(const Matrix<complex<T>>& other) const;
 
 	T trace() const;
-	complex<T> complex_trace() const;
 
 	friend ostream& operator<<(ostream& os, const Matrix<T>& matrix) {
 		for (int i = 0; i < matrix._rows; i++) {
@@ -60,10 +61,7 @@ template<typename T>
 Matrix<T>::Matrix(int rows, int cols) : _rows(rows), _cols(cols) {
 	_data = new T * [_rows];
 	for (int i = 0; i < _rows; ++i) {
-		_data[i] = new T[_cols];
-		for (int j = 0; j < _cols; ++j) {
-			_data[i][j] = 0;
-		}
+		_data[i] = new T[_cols]();
 	}
 }
 template<typename T>
@@ -82,6 +80,37 @@ Matrix<T>::Matrix(int rows, int cols, const T& lower, const T& upper) {
 			_data[i][j] = lower + static_cast<T>(rand()) / (static_cast<T>(RAND_MAX) / (upper - lower));
 		}
 	}
+}
+template<typename T>
+Matrix<T>::Matrix(int rows, int cols, complex<T>) {
+	_rows = rows;
+	_cols = cols;
+	_data = new complex<T>*[_rows];
+
+	for (int i = 0; i < _rows; ++i) {
+		_data[i] = new complex<T>[_cols];
+	}
+
+}
+template<typename T>
+Matrix<T>::Matrix(int rows, int cols, const complex<T>& lower, const complex<T>& upper) {
+    _rows = rows;
+    _cols = cols;
+    _data = new complex<T>*[_rows];
+    
+    for (int i = 0; i < _rows; ++i) {
+        _data[i] = new std::complex<T>[_cols];
+    }
+
+    srand(static_cast<unsigned>(time(nullptr)));
+
+    for (int i = 0; i < _rows; ++i) {
+        for (int j = 0; j < _cols; ++j) {
+            T real_part = lower.real() + static_cast<T>(rand()) / (static_cast<T>(RAND_MAX) / (upper.real() - lower.real()));
+            T imag_part = lower.imag() + static_cast<T>(rand()) / (static_cast<T>(RAND_MAX) / (upper.imag() - lower.imag()));
+            _data[i][j] = complex<T>(real_part, imag_part);
+        }
+    }
 }
 template<typename T>
 Matrix<T>::Matrix(const Matrix<T>& other) : _rows(other._rows), _cols(other._cols) {
@@ -129,7 +158,10 @@ int Matrix<T>::get_cols() const {
 }
 
 template<typename T>
-T& Matrix<T>::operator()(int row, int col) const{
+T& Matrix<T>::operator()(int row, int col) const {
+	if (row > _rows || col > _cols) {
+		throw invalid_argument("Invalid index of matrix");
+	}
 	return _data[row][col];
 }
 template<typename T>
@@ -143,7 +175,7 @@ Matrix<complex<T>> Matrix<T>::operator+(const Matrix<complex<T>>& other) const {
 template<typename T>
 Matrix<T> Matrix<T>::operator+=(const Matrix<T>& other) {
 	if (_rows != other._rows || _cols != other._cols) {
-		throw std::invalid_argument("Matrix dimensions must be the same for addition.");
+		throw invalid_argument("Matrix dimensions must be the same for addition.");
 	}
 
 	for (int i = 0; i < _rows; ++i) {
@@ -156,7 +188,7 @@ Matrix<T> Matrix<T>::operator+=(const Matrix<T>& other) {
 template<typename T>
 Matrix<complex<T>> Matrix<T>::operator+=(const Matrix<complex<T>>& other) {
 	if (_rows != other._rows || _cols != other._cols) {
-		throw std::invalid_argument("Matrix dimensions must be the same for addition.");
+		throw invalid_argument("Matrix dimensions must be the same for addition.");
 	}
 
 	for (int i = 0; i < _rows; ++i) {
@@ -178,7 +210,7 @@ Matrix<complex<T>> Matrix<T>::operator-(const Matrix<complex<T>>& other) const {
 template<typename T>
 Matrix<T> Matrix<T>::operator-=(const Matrix<T>& other) {
 	if (_rows != other._rows || _cols != other._cols) {
-		throw std::invalid_argument("Matrix dimensions must be the same for subtraction.");
+		throw invalid_argument("Matrix dimensions must be the same for subtraction.");
 	}
 
 	for (int i = 0; i < _rows; ++i) {
@@ -191,7 +223,7 @@ Matrix<T> Matrix<T>::operator-=(const Matrix<T>& other) {
 template<typename T>
 Matrix<complex<T>> Matrix<T>::operator-=(const Matrix<complex<T>>& other) {
 	if (_rows != other._rows || _cols != other._cols) {
-		throw std::invalid_argument("Matrix dimensions must be the same for subtraction.");
+		throw invalid_argument("Matrix dimensions must be the same for subtraction.");
 	}
 
 	for (int i = 0; i < _rows; ++i) {
@@ -203,6 +235,9 @@ Matrix<complex<T>> Matrix<T>::operator-=(const Matrix<complex<T>>& other) {
 }
 template<typename T>
 Matrix<T> Matrix<T>::operator*(const Matrix<T>& other) const {
+	if (_cols != other._rows) {
+		throw invalid_argument("Matrix dimensions must be the same for composition.");
+	}
 	int result_rows = _rows;
 	int result_cols = other._cols;
 	Matrix<T> result(result_rows, result_cols);
@@ -219,9 +254,12 @@ Matrix<T> Matrix<T>::operator*(const Matrix<T>& other) const {
 }
 template<typename T>
 Matrix<complex<T>> Matrix<T>::operator*(const Matrix<complex<T>>& other) const {
+	if (_cols != other._rows) {
+		throw invalid_argument("Matrix dimensions must be the same for composition.");
+	}
 	int result_rows = _rows;
 	int result_cols = other._cols;
-	Matrix<complex<T>> result(result_rows, result_cols, T(0));
+	Matrix<complex<T>> result(result_rows,result_cols, complex<T>);
 
 	for (int i = 0; i < result_rows; ++i) {
 		for (int j = 0; j < result_cols; ++j) {
@@ -288,18 +326,6 @@ T Matrix<T>::trace() const {
 	return result;
 }
 template<typename T>
-complex<T> Matrix<T>::complex_trace() const {
-	if (_rows != _cols) {
-		throw invalid_argument("Matrix must be square for trace calculation.");
-	}
-
-	complex<T> result = complex<T>(0);
-	for (int i = 0; i < _rows; ++i) {
-		result += _data[i][i];
-	}
-	return result;
-}
-template<typename T>
 bool Matrix<T>::operator==(const Matrix<T>& other) const {
 	if (_rows != other._rows || _cols != other._cols)
 		return false;
@@ -337,23 +363,48 @@ int main() {
 	Matrix<float> matrix3(5, 5, 1.0, 5.0);
 	Matrix<int> matrix(4, 3);
 	Matrix<int> sum = matrix1 + matrix2;
+	Matrix<int> substraction = matrix1 - matrix2;
 	Matrix<int> multiplication = matrix1 * matrix2;
 	Matrix<int> multiplication2 = matrix1 * 5;
 	Matrix<int> division = matrix1/3;
-	cout << "Zero matrix: \n" << matrix << "\n";
-	cout << "Matrix 1: \n" << matrix1 << "\n";
-	cout << "Matrix 2: \n" << matrix2 << "\n";
-	cout << "Matrix of float: \n" << matrix3 << "\n";
-	cout << "Sum of matrix: \n" << sum << "\n";
-	cout << "Multiplication: \n" << multiplication << "\n";
-	cout << "Multiplication by scalar: \n" << multiplication2 << "\n";
-	cout << "Division: \n" << division << "\n";
+	cout << "Zero matrix: \n" << matrix << endl;
+	cout << "Matrix 1: \n" << matrix1 << endl;
+	cout << "Matrix 2: \n" << matrix2 << endl;
+	cout << "Matrix of float: \n" << matrix3 << endl;
+	cout << "Sum of matrix: \n" << sum << endl;
+	cout << "Substraction: \n" << substraction << endl;
+	cout << "Multiplication: \n" << multiplication << endl;
+	cout << "Multiplication by scalar: \n" << multiplication2 << endl;
+	cout << "Division: \n" << division << endl;
 	int trace = matrix1.trace();
 	float trace2 = matrix3.trace();
-	cout << "int trace: " << trace << "\n";
-	cout << "float trace: " << trace2 << "\n";
+	cout << "int trace: " << trace << endl;
+	cout << "float trace: " << trace2 << endl;
 	bool iseq = matrix1 == matrix2;
 	bool isnteq = matrix1 != matrix2;
-	cout << "is equal: " << iseq << "\n";
-	cout << "isn't equal: " << isnteq << "\n";
+	cout << "is equal: " << iseq << endl;
+	cout << "isn't equal: " << isnteq  << endl << endl;
+
+	Matrix<complex<float>> complex1(2, 2, complex<float>(1.0f, 2.0f), complex<float>(5.0f, 4.0f));
+	Matrix<complex<float>> complex2(2, 2, complex<float>(2.0f, 3.0f), complex<float>(4.0f, 6.0f));
+	Matrix<complex<double>> double_complex(2, 2, complex<double>(1.0, 3.0), complex<double>(3.0, 6.0));
+	Matrix<complex<float>> complex3 = complex1 + complex2;
+	Matrix<complex<float>> complex4 = complex1 - complex2;
+	Matrix<complex<float>> complex5 = complex1 * complex2;
+	Matrix<complex<float>> complex6 = complex1 * 4;
+	Matrix<complex<float>> complex7 = complex6 / 4;
+	cout << "First complex matrix: \n" << complex1 << endl;
+	cout << "Second complex matrix: \n" << complex2 << endl;
+	cout << "Complex matrix with double: \n" << double_complex << endl;
+	cout << "Sum of matrix: \n" << complex3 << endl;
+	cout << "Substraction: \n" << complex4 << endl;
+	cout << "Multiplication: \n" << complex5 << endl;
+	cout << "Multiplication by scalar: \n" << complex6 << endl;
+	cout << "Division: \n" << complex7 << endl;
+	complex<float> trace_complex = complex1.trace();
+	cout << "complex trace: " << trace_complex << endl;
+	bool iseq2 = complex1 == complex2;
+	bool isnteq2 = complex1 != complex2;
+	cout << "is equal: " << iseq2 << endl;
+	cout << "isn't equal: " << isnteq2 << endl << endl;
 }
