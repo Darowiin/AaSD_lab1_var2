@@ -1,7 +1,8 @@
 ﻿#include <iostream>
+#include <iomanip>
 #include <complex>
-#include <random>
 #include <ctime>
+#include <random>
 
 using namespace std;
 
@@ -50,7 +51,7 @@ public:
 	friend ostream& operator<<(ostream& os, const Matrix<T>& matrix) {
 		for (int i = 0; i < matrix._rows; i++) {
 			for (int j = 0; j < matrix._cols; j++) {
-				os << matrix._data[i][j] << ' ';
+				os << fixed << setprecision(4) << matrix._data[i][j] << ' ';
 			}
 			os << '\n';
 		}
@@ -88,7 +89,7 @@ Matrix<T>::Matrix(int rows, int cols, complex<T>) {
 	_data = new complex<T>*[_rows];
 
 	for (int i = 0; i < _rows; ++i) {
-		_data[i] = new complex<T>[_cols];
+		_data[i] = new complex<T>[_cols]();
 	}
 
 }
@@ -357,16 +358,86 @@ template<typename T>
 bool Matrix<T>::operator!=(const Matrix<complex<T>>& other) const {
 	return !(*this == other);
 }
+template <typename T>
+Matrix<T> inverse(const Matrix<T>& mat) {
+	if (mat.get_rows() != 3 || mat.get_cols() != 3) {
+		throw invalid_argument("Matrix must be 3x3 to find the inverse.");
+	}
+
+	Matrix<T> result(3, 3);
+
+	T det = mat(0, 0) * (mat(1, 1) * mat(2, 2) - mat(1, 2) * mat(2, 1))
+		- mat(0, 1) * (mat(1, 0) * mat(2, 2) - mat(1, 2) * mat(2, 0))
+		+ mat(0, 2) * (mat(1, 0) * mat(2, 1) - mat(1, 1) * mat(2, 0));
+
+	if (det == 0) {
+		throw runtime_error("Matrix is not invertible (determinant is zero).");
+	}
+
+	T inv_det = 1.0 / det;
+	result(0, 0) = (mat(1, 1) * mat(2, 2) - mat(1, 2) * mat(2, 1)) * inv_det;
+	result(0, 1) = (mat(0, 2) * mat(2, 1) - mat(0, 1) * mat(2, 2)) * inv_det;
+	result(0, 2) = (mat(0, 1) * mat(1, 2) - mat(0, 2) * mat(1, 1)) * inv_det;
+
+	result(1, 0) = (mat(1, 2) * mat(2, 0) - mat(1, 0) * mat(2, 2)) * inv_det;
+	result(1, 1) = (mat(0, 0) * mat(2, 2) - mat(0, 2) * mat(2, 0)) * inv_det;
+	result(1, 2) = (mat(0, 2) * mat(1, 0) - mat(0, 0) * mat(1, 2)) * inv_det;
+
+	result(2, 0) = (mat(1, 0) * mat(2, 1) - mat(1, 1) * mat(2, 0)) * inv_det;
+	result(2, 1) = (mat(0, 1) * mat(2, 0) - mat(0, 0) * mat(2, 1)) * inv_det;
+	result(2, 2) = (mat(0, 0) * mat(1, 1) - mat(0, 1) * mat(1, 0)) * inv_det;
+
+	return result;
+}
+template <typename T>
+Matrix<complex<T>> complex_inverse(const Matrix<complex<T>>& mat) {
+	if (mat.get_rows() != 3 || mat.get_cols() != 3) {
+		throw invalid_argument("Matrix must be 3x3 to find the inverse.");
+	}
+
+	Matrix<complex<T>> result(3, 3);
+
+	complex<T> det = mat(0, 0) * (mat(1, 1) * mat(2, 2) - mat(1, 2) * mat(2, 1))
+		- mat(0, 1) * (mat(1, 0) * mat(2, 2) - mat(1, 2) * mat(2, 0))
+		+ mat(0, 2) * (mat(1, 0) * mat(2, 1) - mat(1, 1) * mat(2, 0));
+
+	if (abs(det) < numeric_limits<T>::epsilon()) {
+		throw runtime_error("Matrix is not invertible (determinant is close to zero).");
+	}
+
+	complex<T> inv_det = pow(det, complex<T>(-1.0, 0.0));
+
+	result(0, 0) = (mat(1, 1) * mat(2, 2) - mat(1, 2) * mat(2, 1)) * inv_det;
+	result(0, 1) = (mat(0, 2) * mat(2, 1) - mat(0, 1) * mat(2, 2)) * inv_det;
+	result(0, 2) = (mat(0, 1) * mat(1, 2) - mat(0, 2) * mat(1, 1)) * inv_det;
+
+	result(1, 0) = (mat(1, 2) * mat(2, 0) - mat(1, 0) * mat(2, 2)) * inv_det;
+	result(1, 1) = (mat(0, 0) * mat(2, 2) - mat(0, 2) * mat(2, 0)) * inv_det;
+	result(1, 2) = (mat(0, 2) * mat(1, 0) - mat(0, 0) * mat(1, 2)) * inv_det;
+
+	result(2, 0) = (mat(1, 0) * mat(2, 1) - mat(1, 1) * mat(2, 0)) * inv_det;
+	result(2, 1) = (mat(0, 1) * mat(2, 0) - mat(0, 0) * mat(2, 1)) * inv_det;
+	result(2, 2) = (mat(0, 0) * mat(1, 1) - mat(0, 1) * mat(1, 0)) * inv_det;
+
+	return result;
+}
 int main() {
 	Matrix<int> matrix1(5, 5, 1, 8);
 	Matrix<int> matrix2(5, 5, 1, 8);
 	Matrix<float> matrix3(5, 5, 1.0, 5.0);
 	Matrix<int> matrix(4, 3);
+	Matrix<float> matrix_inv(3, 3, 5, 15);
+	for (int i = 0; i < matrix_inv.get_rows(); ++i) {
+		for (int j = 0; j < matrix_inv.get_cols(); ++j) {
+			matrix_inv(i, j) = float(int(matrix_inv(i, j)));
+		}
+	}
 	Matrix<int> sum = matrix1 + matrix2;
 	Matrix<int> substraction = matrix1 - matrix2;
 	Matrix<int> multiplication = matrix1 * matrix2;
 	Matrix<int> multiplication2 = matrix1 * 5;
 	Matrix<int> division = matrix1/3;
+	Matrix<float> inversed = inverse(matrix_inv);
 	cout << "Zero matrix: \n" << matrix << endl;
 	cout << "Matrix 1: \n" << matrix1 << endl;
 	cout << "Matrix 2: \n" << matrix2 << endl;
@@ -376,6 +447,8 @@ int main() {
 	cout << "Multiplication: \n" << multiplication << endl;
 	cout << "Multiplication by scalar: \n" << multiplication2 << endl;
 	cout << "Division: \n" << division << endl;
+	cout << "Matrix: \n" << matrix_inv << endl;
+	cout << "Inversed Matrix: \n" << inversed << endl;
 	int trace = matrix1.trace();
 	float trace2 = matrix3.trace();
 	cout << "int trace: " << trace << endl;
@@ -393,6 +466,8 @@ int main() {
 	Matrix<complex<float>> complex5 = complex1 * complex2;
 	Matrix<complex<float>> complex6 = complex1 * 4;
 	Matrix<complex<float>> complex7 = complex6 / 4;
+	Matrix<complex<float>> complex_inv(3, 3, complex<float>(2.0f, 3.0f), complex<float>(5.0f, 8.0f));
+	Matrix<complex<float>> inversed2 = complex_inverse(complex_inv);
 	cout << "First complex matrix: \n" << complex1 << endl;
 	cout << "Second complex matrix: \n" << complex2 << endl;
 	cout << "Complex matrix with double: \n" << double_complex << endl;
@@ -407,4 +482,6 @@ int main() {
 	bool isnteq2 = complex1 != complex2;
 	cout << "is equal: " << iseq2 << endl;
 	cout << "isn't equal: " << isnteq2 << endl << endl;
+	cout << "Matrix: \n" << complex_inv << endl;
+	cout << "Inversed Matrix: \n" << inversed2 << endl;
 }
